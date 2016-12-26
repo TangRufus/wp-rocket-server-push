@@ -45,10 +45,8 @@ function rocket_server_push_resource_type( string $current_filter ) : string {
 function rocket_server_push_header( string $url ) : string {
 	global $rocket_server_push_header_size_accumulator;
 
-	$original_url = $url;
-
 	if ( headers_sent() ) {
-		return $original_url;
+		return $url;
 	}
 
 	$link_header = sprintf(
@@ -59,13 +57,13 @@ function rocket_server_push_header( string $url ) : string {
 
 	// Early quit if we have hit the header limit.
 	if ( ( $rocket_server_push_header_size_accumulator + strlen( $link_header ) ) > ROCKET_SERVER_PUSH_MAX_HEADER_SIZE ) {
-		return $original_url;
+		return $url;
 	}
 
 	$rocket_server_push_header_size_accumulator += strlen( $link_header );
 	header( $link_header, false );
 
-	return $original_url;
+	return $url;
 }
 
 remove_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
@@ -74,5 +72,5 @@ remove_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
 add_filter( 'style_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
 add_filter( 'script_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
 
-add_filter( 'script_loader_src', 'rocket_server_push_server_push_header', PHP_INT_MAX );
-add_filter( 'style_loader_src', 'rocket_server_push_server_push_header', PHP_INT_MAX );
+add_filter( 'script_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
+add_filter( 'style_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
