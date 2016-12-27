@@ -8,7 +8,7 @@
  * Author URI:      https://www.typist.tech/
  * Text Domain:     wp-rocket-server-push
  * Domain Path:     /languages
- * Version:         1.1.1
+ * Version:         1.1.2
  *
  * @package         WP_Rocket_Server_Push
  */
@@ -66,11 +66,13 @@ function rocket_server_push_header( string $url ) : string {
 	return $url;
 }
 
-remove_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
-remove_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
+if ( function_exists( 'rocket_cdn_enqueue' ) ) {
+	remove_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
+	remove_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
 
-add_filter( 'style_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
-add_filter( 'script_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
+	add_filter( 'style_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
+	add_filter( 'script_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
 
-add_filter( 'script_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
-add_filter( 'style_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
+	add_filter( 'script_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
+	add_filter( 'style_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
+}
