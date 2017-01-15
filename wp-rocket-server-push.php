@@ -8,10 +8,14 @@
  * Author URI:      https://www.typist.tech/
  * Text Domain:     wp-rocket-server-push
  * Domain Path:     /languages
- * Version:         1.1.2
+ * Version:         1.3.0
  *
  * @package         WP_Rocket_Server_Push
  */
+
+if ( is_admin() ) {
+	return;
+}
 
 /**
  * Cloudflare gives an HTTP 520 error when more than 8k of headers are present. Limiting $this
@@ -19,7 +23,7 @@
  */
 
 define( 'ROCKET_SERVER_PUSH_MAX_HEADER_SIZE', 1024 * 4 );
-$rocket_server_push_header_size_accumulator = 0;
+$rsp_header_size_accumulator = 0;
 
 /**
  * Maps a WordPress filter to an "as" parameter in a resource hint
@@ -30,7 +34,7 @@ $rocket_server_push_header_size_accumulator = 0;
  *
  * @return string 'style' or 'script'
  */
-function rocket_server_push_resource_type( string $current_filter ) : string {
+function rsp_resource_type( string $current_filter ) : string {
 	return 'style_loader_src' === $current_filter ? 'style' : 'script';
 }
 
@@ -42,37 +46,40 @@ function rocket_server_push_resource_type( string $current_filter ) : string {
  *
  * @return string $url
  */
-function rocket_server_push_header( string $url ) : string {
-	global $rocket_server_push_header_size_accumulator;
+function rsp_header( $url ) {
+	global $rsp_header_size_accumulator;
 
-	if ( headers_sent() ) {
+	if ( empty( $url ) ) {
 		return $url;
 	}
 
 	$link_header = sprintf(
 		'Link: <%s>; rel=preload; as=%s',
-		esc_url( $url ),
-		sanitize_html_class( rocket_server_push_resource_type( current_filter() ) )
+		esc_url_raw( $url ),
+		sanitize_html_class( rsp_resource_type( current_filter() ) )
 	);
 
 	// Early quit if we have hit the header limit.
-	if ( ( $rocket_server_push_header_size_accumulator + strlen( $link_header ) ) > ROCKET_SERVER_PUSH_MAX_HEADER_SIZE ) {
+	if ( ( $rsp_header_size_accumulator + strlen( $link_header ) ) > ROCKET_SERVER_PUSH_MAX_HEADER_SIZE ) {
 		return $url;
 	}
 
-	$rocket_server_push_header_size_accumulator += strlen( $link_header );
+	$rsp_header_size_accumulator += strlen( $link_header );
+
 	header( $link_header, false );
 
 	return $url;
 }
 
-if ( function_exists( 'rocket_cdn_enqueue' ) ) {
-	remove_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
-	remove_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX );
+remove_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX - 1 );
+remove_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX - 1 );
+add_filter( 'style_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX - 2 );
+add_filter( 'script_loader_src', 'rocket_cdn_enqueue', PHP_INT_MAX - 2 );
 
-	add_filter( 'style_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
-	add_filter( 'script_loader_src', 'rocket_cdn_enqueue', (PHP_INT_MAX - 1) );
+remove_filter( 'style_loader_src', 'rocket_browser_cache_busting', PHP_INT_MAX );
+remove_filter( 'script_loader_src', 'rocket_browser_cache_busting', PHP_INT_MAX );
+add_filter( 'style_loader_src', 'rocket_browser_cache_busting', PHP_INT_MAX - 1 );
+add_filter( 'script_loader_src', 'rocket_browser_cache_busting', PHP_INT_MAX - 1 );
 
-	add_filter( 'script_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
-	add_filter( 'style_loader_src', 'rocket_server_push_header', PHP_INT_MAX );
-}
+add_filter( 'script_loader_src', 'rsp_header', PHP_INT_MAX );
+add_filter( 'style_loader_src', 'rsp_header', PHP_INT_MAX );
